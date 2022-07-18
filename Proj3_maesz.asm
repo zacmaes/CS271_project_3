@@ -41,8 +41,6 @@ INCLUDE Irvine32.inc
 
 ; (insert variable definitions here)
 
-
-; Data for program title and programmer’s name.
 intro_1 BYTE	"Well howdy there Partner! Welcome to the Good Ol' Gator Country Number Round Up! I'm Zac Maes and I'll be y'alls airboat captain today.", 0
 intro_2 BYTE	"Please keep your hands, feet, flip flops, and crocs inside the airboat at all times. This programs fixin' to do a little bit of Everglades Croc-ulus.", 0
 intro_3 BYTE	"We will be accumulating user-input negative integers between the specified bounds, then displaying statistics of the input values including minimum, maximum, and average values, total sum, andtotal number of valid inputs.", 0
@@ -55,19 +53,19 @@ greeting_end   BYTE	", nice to meet you!", 0	; second part of greeting, comes af
 input_buffer   BYTE 21 DUP(0)					; input buffer holds buffer for ReadString
 byte_count	   DWORD ?							; holds counter for ReadString
 
-instruct_1 BYTE	"Instructions:", 0	; data for instructions.
-instruct_2 BYTE	"Please enter numbers in [-200, -100] or [-50, -1].", 0	; data for instructions.
+instruct_1 BYTE	"Instructions:", 0																		; data for instructions.
+instruct_2 BYTE	"Please enter numbers in [-200, -100] or [-50, -1].", 0									; data for instructions.
 instruct_3 BYTE	"Enter a non-negative number when you getter done to see the croc-ulated results.", 0	; data for instructions.
 
 num_prompt BYTE	"Enter Number: ", 0
 
 invalid_num BYTE "Number Invalid!", 0
 
-valid_count SDWORD	0	; count of valid numbers
-valid_sum	SDWORD	0	; value of the sum of all valid numbers
+valid_count SDWORD	?	; count of valid numbers
+valid_sum	SDWORD	?	; value of the sum of all valid numbers
 valid_max SDWORD	?	; the maximum valid number
 valid_min SDWORD	?	; the minimum valid number
-; average can be calculated at the end by taking the sum divided by the count.
+valid_average SDWORD	?	; average
 
 
 
@@ -153,29 +151,9 @@ call CrLf
 call CrLf
 
 
-
-;	-Repeatedly prompt the user to enter a number.
-;		a.) Validate the user input to be in [-200, -100] or [-50, -1] (inclusive).
-;		b.) Notify the user of any invalid negative numbers (negative, but not in the ranges specified)
-;		c.) Count and accumulate the valid user numbers until a non-negative number is entered. Detect this using the SIGN flag.????????
-;				(The non-negative number and any numbers not in the specified ranges are discarded.)
-
-
-; --------PROMPT USER TO ENTER NUMBER-----------------
-
-	;mov EDX, OFFSET num_prompt		; string defined above
-	;call WriteString
-	;call ReadInt
-	;cmp  EAX, -1
-	;JG  _invalidNum				; COULD NOT FIGURE OUT JNE with sign flag for the life of me!!!!!!
-	;JL	_isNegNum
-
-
-; <=  -200...error
-; >= -200, <= -100...valid
-; > -100, <= -50
-
-
+; ------ INITIALIZE TO 0 so that I can Add to them
+mov  valid_count, 0
+mov  valid_sum, 0
 
 _getNum:
 	mov EDX, OFFSET num_prompt		; string defined above
@@ -212,14 +190,11 @@ _aboveFiftyIncl:
 	JLE _upperBound
 
 
-
-_lowerBound:
-	call WriteInt	; If we made it here, the number is between -200 and -100 inclusive
+_lowerBound:	; If we made it here, the number is between -200 and -100 inclusive
 	ADD  valid_sum, EAX
 	jmp  _maxMinify
 
-_upperBound:
-	call WriteInt	; if we made it here, the number is between -50 and -1 inclusive
+_upperBound:	; if we made it here, the number is between -50 and -1 inclusive
 	ADD  valid_sum, EAX
 	jMP  _maxMinify
 
@@ -262,27 +237,24 @@ _validNotMinOrMax:
 	
 
 _endValidation:
+	jmp  _calculateAverage
+
+_calculateAverage:
+	; ???? figure out rounding with IDIV
+
+
+	jmp  _returnConfirmation
+
+_returnConfirmation:
+	mov EDX, OFFSET return_confirmation_1		; string defined above
+	call WriteString
+	
+	mov EAX, valid_count
 	call WriteInt
+
+	mov EDX, OFFSET return_confirmation_2		; string defined above
+	call WriteString
 	call CrLf
-
-
-mov EDX, OFFSET return_confirmation_1		; string defined above
-call WriteString
-call CrLf
-
-mov EDX, OFFSET return_confirmation_2		; string defined above
-call WriteString
-call CrLf
-
-
-
-
-
-
-
-
-
-
 
 ;	-Calculate the (rounded integer) average of the valid numbers and store in a variable.
 ;	-Display:
@@ -304,20 +276,36 @@ call CrLf
 ; ----------FINAL RETURN------------------
 mov EDX, OFFSET result_0		; string defined above
 call WriteString
+
+mov EAX, valid_max
+call WriteInt
 call CrLf
 
 mov EDX, OFFSET result_1		; string defined above
 call WriteString
+
+mov EAX, valid_min
+call WriteInt
 call CrLf
 
 mov EDX, OFFSET result_2		; string defined above
 call WriteString
+
+mov EAX, valid_count
+call WriteInt
 call CrLf
 
 mov EDX, OFFSET result_3		; string defined above
 call WriteString
+
+mov EAX, valid_average
+call WriteInt
 call CrLf
 call CrLf
+
+
+
+;---------Goood bye----------------------
 
 mov EDX, OFFSET input_buffer		; string defined above
 call WriteString
