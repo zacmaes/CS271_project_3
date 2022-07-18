@@ -63,7 +63,17 @@ num_prompt BYTE	"Enter Number: ", 0
 
 invalid_num BYTE "Number Invalid!", 0
 
-input_num DWORD	?	; stores input for current entered number, but I may need to make this a loop or do while loop to keep it going???
+valid_count SDWORD	?	; count of valid numbers
+valid_sum	SDWORD	?	; value of the sum of all valid numbers
+valid_max SDWORD	?	; the maximum valid number
+valid_min SDWORD	?	; the minimum valid number
+; average can be calculated at the end by taking the sum divided by the count.
+
+
+
+
+
+
 
 return_confirmation_1 BYTE "You entered ", 0
 ; surround the ammount of numbers entered with these return statements
@@ -152,14 +162,34 @@ call CrLf
 
 
 ; --------PROMPT USER TO ENTER NUMBER-----------------
-mov EDX, OFFSET num_prompt		; string defined above
-call WriteString
-call CrLf
+
+	mov EDX, OFFSET num_prompt		; string defined above
+	call WriteString
+	call ReadInt
+	cmp  EAX, 0
+	JNS  _invalidNum
+
+
+; <=  -200...error
+; >= -200, <= -100...valid
+; > -100, <= -50
+
+
 
 ; ---------INVALID NUMBER ERROR Message
-mov EDX, OFFSET invalid_num		; string defined above
-call WriteString
-call CrLf
+_invalidNum:
+	mov EDX, OFFSET invalid_num		; string defined above
+	call WriteString
+	call CrLf
+	JMP  _getNum
+
+_getNum:
+	mov EDX, OFFSET num_prompt		; string defined above
+	call WriteString
+	call ReadInt
+	cmp  EAX, 0
+	JNS  _invalidNum
+
 
 
 
