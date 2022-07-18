@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.29.30139.0	    07/17/22 21:00:31
+Microsoft (R) Macro Assembler Version 14.29.30139.0	    07/17/22 23:13:41
 <Project Three: Data Validation, Looping, Constants     (Pro  Page 1 - 1
 
 
@@ -245,8 +245,8 @@ Microsoft (R) Macro Assembler Version 14.29.30139.0	    07/17/22 21:00:31
 	   61 6C 69 64 21
 	   00
 
- 00000351 00000000		valid_count SDWORD	?	; count of valid numbers
- 00000355 00000000		valid_sum	SDWORD	?	; value of the sum of all valid numbers
+ 00000351 00000000		valid_count SDWORD	0	; count of valid numbers
+ 00000355 00000000		valid_sum	SDWORD	0	; value of the sum of all valid numbers
  00000359 00000000		valid_max SDWORD	?	; the maximum valid number
  0000035D 00000000		valid_min SDWORD	?	; the minimum valid number
 				; average can be calculated at the end by taking the sum divided by the count.
@@ -408,17 +408,18 @@ Microsoft (R) Macro Assembler Version 14.29.30139.0	    07/17/22 21:00:31
 				;	-Repeatedly prompt the user to enter a number.
 				;		a.) Validate the user input to be in [-200, -100] or [-50, -1] (inclusive).
 				;		b.) Notify the user of any invalid negative numbers (negative, but not in the ranges specified)
-				;		c.) Count and accumulate the valid user numbers until a non-negative number is entered. Detect this using the SIGN flag.
+				;		c.) Count and accumulate the valid user numbers until a non-negative number is entered. Detect this using the SIGN flag.????????
 				;				(The non-negative number and any numbers not in the specified ranges are discarded.)
 
 
 				; --------PROMPT USER TO ENTER NUMBER-----------------
- 000000BE			_getNum:
- 000000BE  BA 00000332 R		mov EDX, OFFSET num_prompt		; string defined above
- 000000C3  E8 00000000 E		call WriteString
- 000000C8  E8 00000000 E		call ReadInt
- 000000CD  83 F8 00			cmp  EAX, 0
- 000000D0  79 00			JNS  _invalidNum
+
+					;mov EDX, OFFSET num_prompt		; string defined above
+					;call WriteString
+					;call ReadInt
+					;cmp  EAX, -1
+					;JG  _invalidNum				; COULD NOT FIGURE OUT JNE with sign flag for the life of me!!!!!!
+					;JL	_isNegNum
 
 
 				; <=  -200...error
@@ -427,23 +428,109 @@ Microsoft (R) Macro Assembler Version 14.29.30139.0	    07/17/22 21:00:31
 
 
 
+ 000000BE			_getNum:
+ 000000BE  BA 00000332 R		mov EDX, OFFSET num_prompt		; string defined above
+ 000000C3  E8 00000000 E		call WriteString
+ 000000C8  E8 00000000 E		call ReadInt
+ 000000CD  83 F8 00			cmp  EAX, 0
+ 000000D0  7D 49			JGE  _positiveNumCheck				; COULD NOT FIGURE OUT JNE with sign flag for the life of me!!!!!!
+ 000000D2  7C 11			JL	_isNegNum
+
 				; ---------INVALID NUMBER ERROR Message
- 000000D2			_invalidNum:
- 000000D2  BA 00000341 R		mov EDX, OFFSET invalid_num		; string defined above
- 000000D7  E8 00000000 E		call WriteString
- 000000DC  E8 00000000 E		call CrLf
- 000000E1  EB DB			JMP  _getNum
+ 000000D4			_invalidNum:
+ 000000D4  BA 00000341 R		mov EDX, OFFSET invalid_num		; string defined above
+ 000000D9  E8 00000000 E		call WriteString
+ 000000DE  E8 00000000 E		call CrLf
+ 000000E3  EB D9			JMP  _getNum
+
+ 000000E5			_isNegNum:
+ 000000E5  3D FFFFFF38			cmp EAX, -200
+ 000000EA  7C E8			JL	_invalidNum
+ 000000EC  7D 00			JGE _twoHundoUp
+
+ 000000EE			_twoHundoUp:
+ 000000EE  83 F8 9C			cmp EAX, -100
+ 000000F1  7E 0E			JLE _lowerBound
+ 000000F3  7F 00			JG	_aboveOneHundo
+
+ 000000F5			_aboveOneHundo:
+ 000000F5  83 F8 CE			cmp EAX, -50
+ 000000F8  7C DA			JL	_invalidNum
+ 000000FA  7D 00			JGE _aboveFiftyIncl
+
+ 000000FC			_aboveFiftyIncl:
+ 000000FC  83 F8 FF			cmp EAX, -1
+ 000000FF  7E 0D			JLE _upperBound
 
 
 
+ 00000101			_lowerBound:
+ 00000101  E8 00000000 E		call WriteInt	; If we made it here, the number is between -200 and -100 inclusive
+ 00000106  01 05 00000355 R		ADD  valid_sum, EAX
+ 0000010C  EB 18			jmp  _maxMinify
 
- 000000E3  BA 00000361 R	mov EDX, OFFSET return_confirmation_1		; string defined above
- 000000E8  E8 00000000 E	call WriteString
- 000000ED  E8 00000000 E	call CrLf
+ 0000010E			_upperBound:
+ 0000010E  E8 00000000 E		call WriteInt	; if we made it here, the number is between -50 and -1 inclusive
+ 00000113  01 05 00000355 R		ADD  valid_sum, EAX
+ 00000119  EB 0B			jMP  _maxMinify
 
- 000000F2  BA 0000036E R	mov EDX, OFFSET return_confirmation_2		; string defined above
- 000000F7  E8 00000000 E	call WriteString
- 000000FC  E8 00000000 E	call CrLf
+ 0000011B			_positiveNumCheck:	; land here when done with a positve num
+ 0000011B  83 3D 00000351 R		cmp  valid_count, 0
+	   00
+ 00000122  7E B0			JLE   _invalidNum
+ 00000124  7F 5F			JG   _endValidation
+
+
+ 00000126			_maxMinify:		; assigns max or min
+ 00000126  83 3D 00000351 R		cmp  valid_count, 0
+	   00
+ 0000012D  7E 02			JLE   _assignToBothMaxMin
+ 0000012F  7F 16			JG	  _checkMax
+					
+
+ 00000131			_assignToBothMaxMin:
+ 00000131  A3 00000359 R		mov  valid_max, EAX
+ 00000136  A3 0000035D R		mov  valid_min, EAX
+ 0000013B  83 05 00000351 R		ADD  valid_count, 1
+	   01
+ 00000142  E9 FFFFFF77			JMP  _getNum
+
+ 00000147			_checkMax:
+ 00000147  3B 05 00000359 R		cmp  EAX, valid_max
+ 0000014D  7C 11			JL   _checkMin
+ 0000014F  A3 00000359 R		mov  valid_max, EAX
+ 00000154  83 05 00000351 R		ADD  valid_count, 1
+	   01
+ 0000015B  E9 FFFFFF5E			JMP  _getNum
+
+ 00000160			_checkMin:
+ 00000160  3B 05 0000035D R		cmp  EAX, valid_min
+ 00000166  7F 11			JG   _validNotMinOrMax
+ 00000168  A3 0000035D R		mov valid_min, EAX
+ 0000016D  83 05 00000351 R		ADD  valid_count, 1
+	   01
+ 00000174  E9 FFFFFF45			JMP  _getNum
+
+ 00000179			_validNotMinOrMax:
+ 00000179  83 05 00000351 R		ADD  valid_count, 1
+	   01
+ 00000180  E9 FFFFFF39			JMP  _getNum
+					
+					
+
+ 00000185			_endValidation:
+ 00000185  E8 00000000 E		call WriteInt
+ 0000018A  E8 00000000 E		call CrLf
+					mov
+Proj3_maesz.asm(267) : error A2008:syntax error : in instruction
+
+ 0000018F  BA 00000361 R	mov EDX, OFFSET return_confirmation_1		; string defined above
+ 00000194  E8 00000000 E	call WriteString
+ 00000199  E8 00000000 E	call CrLf
+
+ 0000019E  BA 0000036E R	mov EDX, OFFSET return_confirmation_2		; string defined above
+ 000001A3  E8 00000000 E	call WriteString
+ 000001A8  E8 00000000 E	call CrLf
 
 
 
@@ -473,49 +560,49 @@ Microsoft (R) Macro Assembler Version 14.29.30139.0	    07/17/22 21:00:31
 
 
 				; ----------FINAL RETURN------------------
- 00000101  BA 0000037E R	mov EDX, OFFSET result_0		; string defined above
- 00000106  E8 00000000 E	call WriteString
- 0000010B  E8 00000000 E	call CrLf
+ 000001AD  BA 0000037E R	mov EDX, OFFSET result_0		; string defined above
+ 000001B2  E8 00000000 E	call WriteString
+ 000001B7  E8 00000000 E	call CrLf
 
- 00000110  BA 0000039B R	mov EDX, OFFSET result_1		; string defined above
- 00000115  E8 00000000 E	call WriteString
- 0000011A  E8 00000000 E	call CrLf
+ 000001BC  BA 0000039B R	mov EDX, OFFSET result_1		; string defined above
+ 000001C1  E8 00000000 E	call WriteString
+ 000001C6  E8 00000000 E	call CrLf
 
- 0000011F  BA 000003B8 R	mov EDX, OFFSET result_2		; string defined above
- 00000124  E8 00000000 E	call WriteString
- 00000129  E8 00000000 E	call CrLf
+ 000001CB  BA 000003B8 R	mov EDX, OFFSET result_2		; string defined above
+ 000001D0  E8 00000000 E	call WriteString
+ 000001D5  E8 00000000 E	call CrLf
 
- 0000012E  BA 000003DA R	mov EDX, OFFSET result_3		; string defined above
- 00000133  E8 00000000 E	call WriteString
- 00000138  E8 00000000 E	call CrLf
- 0000013D  E8 00000000 E	call CrLf
+ 000001DA  BA 000003DA R	mov EDX, OFFSET result_3		; string defined above
+ 000001DF  E8 00000000 E	call WriteString
+ 000001E4  E8 00000000 E	call CrLf
+ 000001E9  E8 00000000 E	call CrLf
 
- 00000142  BA 00000287 R	mov EDX, OFFSET input_buffer		; string defined above
- 00000147  E8 00000000 E	call WriteString
+ 000001EE  BA 00000287 R	mov EDX, OFFSET input_buffer		; string defined above
+ 000001F3  E8 00000000 E	call WriteString
 
- 0000014C  BA 000003F2 R	mov EDX, OFFSET good_bye_1		; string defined above
- 00000151  E8 00000000 E	call WriteString
- 00000156  E8 00000000 E	call CrLf
+ 000001F8  BA 000003F2 R	mov EDX, OFFSET good_bye_1		; string defined above
+ 000001FD  E8 00000000 E	call WriteString
+ 00000202  E8 00000000 E	call CrLf
 
- 0000015B  BA 00000428 R	mov EDX, OFFSET good_bye_2		; string defined above
- 00000160  E8 00000000 E	call WriteString
- 00000165  E8 00000000 E	call CrLf
+ 00000207  BA 00000428 R	mov EDX, OFFSET good_bye_2		; string defined above
+ 0000020C  E8 00000000 E	call WriteString
+ 00000211  E8 00000000 E	call CrLf
 
- 0000016A  BA 000004A2 R	mov EDX, OFFSET good_bye_3		; string defined above
- 0000016F  E8 00000000 E	call WriteString
- 00000174  E8 00000000 E	call CrLf
+ 00000216  BA 000004A2 R	mov EDX, OFFSET good_bye_3		; string defined above
+ 0000021B  E8 00000000 E	call WriteString
+ 00000220  E8 00000000 E	call CrLf
 
 
 
 					Invoke ExitProcess,0	; exit to operating system
- 00000179  6A 00	   *	    push   +000000000h
- 0000017B  E8 00000000 E   *	    call   ExitProcess
- 00000180			main ENDP
+ 00000225  6A 00	   *	    push   +000000000h
+ 00000227  E8 00000000 E   *	    call   ExitProcess
+ 0000022C			main ENDP
 
 				; (insert additional procedures here)
 
 				END main
-Microsoft (R) Macro Assembler Version 14.29.30139.0	    07/17/22 21:00:31
+Microsoft (R) Macro Assembler Version 14.29.30139.0	    07/17/22 23:13:41
 <Project Three: Data Validation, Looping, Constants     (Pro  Symbols 2 - 1
 
 
@@ -610,7 +697,7 @@ Segments and Groups:
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
 _DATA  . . . . . . . . . . . . .	32 Bit	 000004D5 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 00000180 Para	  Public  'CODE'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 0000022C Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -717,9 +804,22 @@ WriteStackFrame  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteToFile  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteWindowsMsg  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000180 Public STDCALL
+main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000022C Public STDCALL
   _getNum  . . . . . . . . . . .	L Near	 000000BE _TEXT	
-  _invalidNum  . . . . . . . . .	L Near	 000000D2 _TEXT	
+  _invalidNum  . . . . . . . . .	L Near	 000000D4 _TEXT	
+  _isNegNum  . . . . . . . . . .	L Near	 000000E5 _TEXT	
+  _twoHundoUp  . . . . . . . . .	L Near	 000000EE _TEXT	
+  _aboveOneHundo . . . . . . . .	L Near	 000000F5 _TEXT	
+  _aboveFiftyIncl  . . . . . . .	L Near	 000000FC _TEXT	
+  _lowerBound  . . . . . . . . .	L Near	 00000101 _TEXT	
+  _upperBound  . . . . . . . . .	L Near	 0000010E _TEXT	
+  _positiveNumCheck  . . . . . .	L Near	 0000011B _TEXT	
+  _maxMinify . . . . . . . . . .	L Near	 00000126 _TEXT	
+  _assignToBothMaxMin  . . . . .	L Near	 00000131 _TEXT	
+  _checkMax  . . . . . . . . . .	L Near	 00000147 _TEXT	
+  _checkMin  . . . . . . . . . .	L Near	 00000160 _TEXT	
+  _validNotMinOrMax  . . . . . .	L Near	 00000179 _TEXT	
+  _endValidation . . . . . . . .	L Near	 00000185 _TEXT	
 printf . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
 scanf  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
 wsprintfA  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
@@ -984,4 +1084,4 @@ wsprintf . . . . . . . . . . . .	Text   	 wsprintfA
 yellow . . . . . . . . . . . . .	Number	 0000000Eh   
 
 	   0 Warnings
-	   0 Errors
+	   1 Errors

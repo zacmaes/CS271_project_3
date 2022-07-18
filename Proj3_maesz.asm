@@ -63,8 +63,8 @@ num_prompt BYTE	"Enter Number: ", 0
 
 invalid_num BYTE "Number Invalid!", 0
 
-valid_count SDWORD	?	; count of valid numbers
-valid_sum	SDWORD	?	; value of the sum of all valid numbers
+valid_count SDWORD	0	; count of valid numbers
+valid_sum	SDWORD	0	; value of the sum of all valid numbers
 valid_max SDWORD	?	; the maximum valid number
 valid_min SDWORD	?	; the minimum valid number
 ; average can be calculated at the end by taking the sum divided by the count.
@@ -157,17 +157,18 @@ call CrLf
 ;	-Repeatedly prompt the user to enter a number.
 ;		a.) Validate the user input to be in [-200, -100] or [-50, -1] (inclusive).
 ;		b.) Notify the user of any invalid negative numbers (negative, but not in the ranges specified)
-;		c.) Count and accumulate the valid user numbers until a non-negative number is entered. Detect this using the SIGN flag.
+;		c.) Count and accumulate the valid user numbers until a non-negative number is entered. Detect this using the SIGN flag.????????
 ;				(The non-negative number and any numbers not in the specified ranges are discarded.)
 
 
 ; --------PROMPT USER TO ENTER NUMBER-----------------
 
-	mov EDX, OFFSET num_prompt		; string defined above
-	call WriteString
-	call ReadInt
-	cmp  EAX, 0
-	JNS  _invalidNum
+	;mov EDX, OFFSET num_prompt		; string defined above
+	;call WriteString
+	;call ReadInt
+	;cmp  EAX, -1
+	;JG  _invalidNum				; COULD NOT FIGURE OUT JNE with sign flag for the life of me!!!!!!
+	;JL	_isNegNum
 
 
 ; <=  -200...error
@@ -176,6 +177,14 @@ call CrLf
 
 
 
+_getNum:
+	mov EDX, OFFSET num_prompt		; string defined above
+	call WriteString
+	call ReadInt
+	cmp  EAX, 0
+	JGE  _positiveNumCheck				; COULD NOT FIGURE OUT JNE with sign flag for the life of me!!!!!!
+	JL	_isNegNum
+
 ; ---------INVALID NUMBER ERROR Message
 _invalidNum:
 	mov EDX, OFFSET invalid_num		; string defined above
@@ -183,14 +192,78 @@ _invalidNum:
 	call CrLf
 	JMP  _getNum
 
-_getNum:
-	mov EDX, OFFSET num_prompt		; string defined above
-	call WriteString
-	call ReadInt
-	cmp  EAX, 0
-	JNS  _invalidNum
+_isNegNum:
+	cmp EAX, -200
+	JL	_invalidNum
+	JGE _twoHundoUp
+
+_twoHundoUp:
+	cmp EAX, -100
+	JLE _lowerBound
+	JG	_aboveOneHundo
+
+_aboveOneHundo:
+	cmp EAX, -50
+	JL	_invalidNum
+	JGE _aboveFiftyIncl
+
+_aboveFiftyIncl:
+	cmp EAX, -1
+	JLE _upperBound
 
 
+
+_lowerBound:
+	call WriteInt	; If we made it here, the number is between -200 and -100 inclusive
+	ADD  valid_sum, EAX
+	jmp  _maxMinify
+
+_upperBound:
+	call WriteInt	; if we made it here, the number is between -50 and -1 inclusive
+	ADD  valid_sum, EAX
+	jMP  _maxMinify
+
+_positiveNumCheck:	; land here when done with a positve num
+	cmp  valid_count, 0
+	JLE   _invalidNum
+	JG   _endValidation
+
+
+_maxMinify:		; assigns max or min
+	cmp  valid_count, 0
+	JLE   _assignToBothMaxMin
+	JG	  _checkMax
+	
+
+_assignToBothMaxMin:
+	mov  valid_max, EAX
+	mov  valid_min, EAX
+	ADD  valid_count, 1
+	JMP  _getNum
+
+_checkMax:
+	cmp  EAX, valid_max
+	JL   _checkMin
+	mov  valid_max, EAX
+	ADD  valid_count, 1
+	JMP  _getNum
+
+_checkMin:
+	cmp  EAX, valid_min
+	JG   _validNotMinOrMax
+	mov valid_min, EAX
+	ADD  valid_count, 1
+	JMP  _getNum
+
+_validNotMinOrMax:
+	ADD  valid_count, 1
+	JMP  _getNum
+	
+	
+
+_endValidation:
+	call WriteInt
+	call CrLf
 
 
 mov EDX, OFFSET return_confirmation_1		; string defined above
